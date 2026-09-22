@@ -2,7 +2,7 @@
 
 ## Deskripsi
 
-**Apotek** adalah aplikasi mobile yang dirancang untuk memudahkan pengguna dalam mencari informasi obat, melakukan pemesanan obat, mengunggah dan memvalidasi resep, serta berkonsultasi dengan apoteker. Aplikasi ini juga menyediakan fitur pengelolaan pesanan, stok obat, pembayaran, pengingat minum obat, dan informasi edukasi obat sehingga proses pelayanan apotek dapat dilakukan dengan lebih mudah dan terorganisir.
+**ApoteKita** adalah aplikasi mobile yang dirancang untuk memudahkan pengguna dalam mencari informasi obat, melakukan pemesanan obat, mengunggah dan memvalidasi resep, serta berkonsultasi dengan apoteker. Aplikasi ini juga menyediakan fitur pengelolaan pesanan, stok obat, pembayaran, pengingat minum obat, dan informasi edukasi obat sehingga proses pelayanan apotek dapat dilakukan dengan lebih mudah dan terorganisir.
 
 ##  Anggota Tim
 
