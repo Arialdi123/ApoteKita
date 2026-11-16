@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "419520945853",
+    "project_id": "apotekita",
+    "storage_bucket": "apotekita.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:419520945853:android:5e6021ee7cf84c87d461d4",
+        "android_client_info": {
+          "package_name": "com.example.apotek_kita"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "419520945853-7h181sj6m6mk9j8a5om939umoleh0843.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIM7_hYMydZV2aDHdcQElErwwX0-DbMa4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "419520945853-7h181sj6m6mk9j8a5om939umoleh0843.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'home_page.dart';
+import 'app/routes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -152,17 +152,8 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
-    // ── Navigasi ke HomePage ────────────────────────────────────────────────
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomePage(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
+    // ── Navigasi ke LoginScreen ──────────────────────────────────────────────
+    Navigator.of(context).pushReplacementNamed(AppRoutes.login);
   }
 
   @override
