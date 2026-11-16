@@ -10,14 +10,13 @@ import 'splash_screen_wrapper.dart';
 ///
 /// Alur:
 ///   - Waiting    → SplashScreenWrapper (loading awal)
-///   - Firebase user logged in   → HomeScreen
-///   - Firebase user null  → cek AuthService lokal → HomeScreen / LoginScreen
+///   - Firebase user masuk   → HomeScreen
+///   - Firebase user null → cek AuthService lokal → HomeScreen / LoginScreen
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Cek apakah Firebase tersedia di environment
     final bool firebaseAvailable = _isFirebaseAvailable();
 
     if (firebaseAvailable) {
@@ -31,7 +30,6 @@ class AuthGate extends StatelessWidget {
 
           // Firebase user masih login
           if (snapshot.hasData && snapshot.data != null) {
-            // Sinkronkan ke AuthService lokal jika belum ada
             final authService = AuthService();
             if (!authService.isLoggedIn) {
               final fbUser = snapshot.data!;
@@ -40,13 +38,17 @@ class AuthGate extends StatelessWidget {
             return const HomeScreen();
           }
 
-          // Cek fallback: user lokal (login via email dummy / demo mode)
-          final authService = AuthService();
-          if (authService.isLoggedIn) {
-            return const HomeScreen();
-          }
-
-          return const LoginScreen();
+          // Fallback: pantau AuthService lokal (untuk demo mode / email dummy)
+          // menggunakan ValueListenableBuilder agar reaktif saat user berubah
+          return ValueListenableBuilder<dynamic>(
+            valueListenable: AuthService().userNotifier,
+            builder: (context, user, _) {
+              if (user != null) {
+                return const HomeScreen();
+              }
+              return const LoginScreen();
+            },
+          );
         },
       );
     }
@@ -64,19 +66,18 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-/// LocalAuthGate: reactive terhadap AuthService state lokal
-/// Digunakan saat Firebase belum dikonfigurasi (tanpa google-services.json).
-class _LocalAuthGate extends StatefulWidget {
-  @override
-  State<_LocalAuthGate> createState() => _LocalAuthGateState();
-}
-
-class _LocalAuthGateState extends State<_LocalAuthGate> {
-  final _authService = AuthService();
-
+/// LocalAuthGate: reaktif terhadap AuthService.userNotifier (ValueNotifier).
+class _LocalAuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return _authService.isLoggedIn ? const HomeScreen() : const LoginScreen();
+    return ValueListenableBuilder<dynamic>(
+      valueListenable: AuthService().userNotifier,
+      builder: (context, user, _) {
+        if (user != null) {
+          return const HomeScreen();
+        }
+        return const LoginScreen();
+      },
+    );
   }
 }
-
