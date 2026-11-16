@@ -4,6 +4,7 @@ import '../../app/routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_widgets.dart';
 import '../../widgets/auth_widgets.dart';
+import '../user/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -145,11 +146,12 @@ class _LoginScreenState extends State<LoginScreen>
         context,
         'Berhasil masuk sebagai ${result.user?.name ?? "Pengguna"}',
       );
-      // Firebase authStateChanges akan memicu AuthGate secara otomatis.
-      // Untuk keamanan (dan fallback demo mode), navigasi juga secara eksplisit.
+      // Navigasi ke HomeScreen dengan menghapus seluruh stack navigasi.
+      // Gunakan pushAndRemoveUntil dengan MaterialPageRoute langsung
+      // agar berjalan di semua kondisi (Firebase aktif maupun mode demo lokal).
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
         );
       }
