@@ -12,7 +12,7 @@
 | 2 | Joy Christian Barus | 241402070 |
 | 3 | Jordan Michael Amadeo Hutahaean | 241402082 |
 | 4 | Holy Sola Fide Sianipar | 241402086 |
-| 5 | Hiskia Prawira Tarigan | 241402126 |
+| 5 | Hiskia Prawira Tarigan | 241402129 |
 
 ##  Rencana Fitur
 
