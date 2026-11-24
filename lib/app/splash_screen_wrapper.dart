@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 /// Widget loading tipis yang muncul saat AuthGate menunggu stream Firebase.
 /// Ini menggantikan layar putih kosong di antara splash native dan UI utama.

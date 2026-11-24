@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -41,7 +41,7 @@ class AuthService {
   }
 
   /// Web Client ID dari file google-services.json (client -> oauth_client dengan client_type: 3)
-  static const String? serverClientId =
+  static const String serverClientId =
       '419520945853-7h181sj6m6mk9j8a5om939umoleh0843.apps.googleusercontent.com';
 
   bool _isGoogleSignInInitialized = false;
