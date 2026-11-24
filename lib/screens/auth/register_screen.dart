@@ -4,6 +4,7 @@ import '../../app/routes.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_widgets.dart';
 import '../../widgets/auth_widgets.dart';
+import '../user/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -158,7 +159,10 @@ class _RegisterScreenState extends State<RegisterScreen>
         context,
         'Selamat datang, ${result.user?.name ?? "Pengguna"}!',
       );
-      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
     } else {
       if (result.message != null && !result.message!.contains('dibatalkan')) {
         AppFeedback.showError(context, result.message!);
@@ -176,7 +180,10 @@ class _RegisterScreenState extends State<RegisterScreen>
           context,
           'Selamat datang! Akun nomor HP berhasil diverifikasi.',
         );
-        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+        Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
       },
     );
   }

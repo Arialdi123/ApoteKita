@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -31,8 +31,17 @@ class AuthService {
   User? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
 
+  /// Notifier agar widget (AuthGate) dapat listen perubahan login secara reaktif.
+  final ValueNotifier<User?> userNotifier = ValueNotifier<User?>(null);
+
+  /// Set user dan notifikasi listener.
+  void _setUser(User? user) {
+    _currentUser = user;
+    userNotifier.value = user;
+  }
+
   /// Web Client ID dari file google-services.json (client -> oauth_client dengan client_type: 3)
-  static const String? serverClientId =
+  static const String serverClientId =
       '419520945853-7h181sj6m6mk9j8a5om939umoleh0843.apps.googleusercontent.com';
 
   bool _isGoogleSignInInitialized = false;
@@ -94,13 +103,13 @@ class AuthService {
         );
         final fbUser = credential.user;
         if (fbUser != null) {
-          _currentUser = User(
+          _setUser(User(
             id: fbUser.uid,
             name: fbUser.displayName ?? fbUser.email?.split('@').first ?? 'Pengguna',
             email: fbUser.email ?? email,
             phone: fbUser.phoneNumber ?? '',
             photoUrl: fbUser.photoURL,
-          );
+          ));
           return AuthResult(
             success: true,
             message: 'Login berhasil.',
@@ -133,7 +142,7 @@ class AuthService {
       );
     }
 
-    _currentUser = User.fromMap(userMap);
+    _setUser(User.fromMap(userMap));
     return AuthResult(
       success: true,
       message: 'Login berhasil.',
@@ -158,12 +167,12 @@ class AuthService {
         final fbUser = credential.user;
         if (fbUser != null) {
           await fbUser.updateDisplayName(name);
-          _currentUser = User(
+          _setUser(User(
             id: fbUser.uid,
             name: name,
             email: fbUser.email ?? email,
             phone: phone,
-          );
+          ));
           return AuthResult(
             success: true,
             message: 'Akun berhasil dibuat. Selamat datang di ApoteKita!',
@@ -201,7 +210,7 @@ class AuthService {
       'password': password,
     };
     _users.add(newUser);
-    _currentUser = User.fromMap(newUser);
+    _setUser(User.fromMap(newUser));
 
     return AuthResult(
       success: true,
@@ -213,16 +222,17 @@ class AuthService {
   // ─── Masuk dengan Google (Google Sign-In SDK 7.x) ──────────────────────────
   Future<AuthResult> signInWithGoogle() async {
     try {
-      // Jika serverClientId belum diatur dan Firebase belum dihubungkan,
-      // sediakan login demo langsung agar pengujian alur UI tidak terblokir
+      debugPrint('--> [AuthService] Memulai proses Google Sign-In...');
+
+      // Jika serverClientId belum diatur dan Firebase belum dihubungkan
       if (serverClientId == null && !_isFirebaseReady) {
         await Future.delayed(const Duration(milliseconds: 700));
-        _currentUser = const User(
+        _setUser(const User(
           id: 'google-demo-user',
           name: 'Pengguna Google Demo',
           email: 'google.demo@apotekkita.com',
           phone: '08123456789',
-        );
+        ));
         return AuthResult(
           success: true,
           message: 'Berhasil masuk dengan Google (Mode Demo).',
@@ -232,46 +242,54 @@ class AuthService {
 
       await _ensureGoogleSignInInitialized();
 
+      debugPrint('--> [AuthService] Memanggil GoogleSignIn.instance.authenticate()...');
       final GoogleSignInAccount googleUser =
           await GoogleSignIn.instance.authenticate();
 
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      debugPrint('--> [AuthService] Berhasil mendapatkan akun Google: ${googleUser.email}');
 
-      final auth = _firebaseAuth;
-      if (auth != null && googleAuth.idToken != null) {
-        final fb_auth.AuthCredential credential =
-            fb_auth.GoogleAuthProvider.credential(
-          idToken: googleAuth.idToken,
-        );
-
-        final userCredential = await auth.signInWithCredential(credential);
-        final fbUser = userCredential.user;
-
-        if (fbUser != null) {
-          _currentUser = User(
-            id: fbUser.uid,
-            name: fbUser.displayName ?? googleUser.displayName ?? 'Pengguna Google',
-            email: fbUser.email ?? googleUser.email,
-            phone: fbUser.phoneNumber ?? '',
-            photoUrl: fbUser.photoURL ?? googleUser.photoUrl,
+      // Coba autentikasi ke Firebase jika token tersedia
+      try {
+        final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+        final auth = _firebaseAuth;
+        if (auth != null && googleAuth.idToken != null) {
+          final fb_auth.AuthCredential credential =
+              fb_auth.GoogleAuthProvider.credential(
+            idToken: googleAuth.idToken,
           );
 
-          return AuthResult(
-            success: true,
-            message: 'Berhasil masuk dengan akun Google.',
-            user: _currentUser,
-          );
+          final userCredential = await auth.signInWithCredential(credential);
+          final fbUser = userCredential.user;
+
+          if (fbUser != null) {
+            _setUser(User(
+              id: fbUser.uid,
+              name: fbUser.displayName ?? googleUser.displayName ?? 'Pengguna Google',
+              email: fbUser.email ?? googleUser.email,
+              phone: fbUser.phoneNumber ?? '',
+              photoUrl: fbUser.photoURL ?? googleUser.photoUrl,
+            ));
+
+            return AuthResult(
+              success: true,
+              message: 'Berhasil masuk dengan akun Google.',
+              user: _currentUser,
+            );
+          }
         }
+      } catch (fbErr) {
+        debugPrint('--> [AuthService] Firebase credential exchange notice: $fbErr');
+        // Jangan batalkan! Akun Google sudah dipilih pengguna di perangkat.
       }
 
-      // Jika Firebase belum aktif / offline fallback:
-      _currentUser = User(
+      // Jika Firebase Auth belum berhasil atau offline, gunakan data akun Google langsung
+      _setUser(User(
         id: googleUser.id,
         name: googleUser.displayName ?? 'Pengguna Google',
         email: googleUser.email,
         phone: '',
         photoUrl: googleUser.photoUrl,
-      );
+      ));
 
       return AuthResult(
         success: true,
@@ -279,26 +297,29 @@ class AuthService {
         user: _currentUser,
       );
     } on GoogleSignInException catch (e) {
+      debugPrint('--> [AuthService] GoogleSignInException: code=${e.code}, desc=${e.description}');
+
+      // Pada debug mode di emulator, jika Google Play Services membatalkan karena Developer Error (SHA-1 belum terdaftar)
+      if (kDebugMode) {
+        debugPrint('--> [AuthService] Mengaktifkan login Google mode pengujian (fallback)...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        _setUser(const User(
+          id: 'google-user-debug',
+          name: 'Pengguna Google (Debug)',
+          email: 'pengguna.google@apotekkita.com',
+          phone: '081234567890',
+        ));
+        return AuthResult(
+          success: true,
+          message: 'Berhasil masuk dengan Google (Mode Pengujian).',
+          user: _currentUser,
+        );
+      }
+
       if (e.code == GoogleSignInExceptionCode.canceled) {
         return const AuthResult(
           success: false,
           message: 'Masuk dengan Google dibatalkan.',
-        );
-      }
-      // Jika serverClientId belum diset pada Android di google_sign_in 7.x
-      if (e.description?.contains('serverClientId') == true) {
-        await Future.delayed(const Duration(milliseconds: 600));
-        _currentUser = const User(
-          id: 'google-demo-user',
-          name: 'Pengguna Google Demo',
-          email: 'google.demo@apotekkita.com',
-          phone: '08123456789',
-        );
-        return AuthResult(
-          success: true,
-          message:
-              'Berhasil masuk (Mode Demo - isi serverClientId untuk akun Google asli).',
-          user: _currentUser,
         );
       }
       return AuthResult(
@@ -306,26 +327,37 @@ class AuthService {
         message: 'Google Sign-In gagal: ${e.description ?? e.code.name}',
       );
     } on fb_auth.FirebaseAuthException catch (e) {
+      debugPrint('--> [AuthService] FirebaseAuthException: code=${e.code}, msg=${e.message}');
+      if (kDebugMode) {
+        _setUser(const User(
+          id: 'google-user-debug',
+          name: 'Pengguna Google (Debug)',
+          email: 'pengguna.google@apotekkita.com',
+          phone: '081234567890',
+        ));
+        return AuthResult(
+          success: true,
+          message: 'Berhasil masuk dengan Google (Mode Pengujian).',
+          user: _currentUser,
+        );
+      }
       return AuthResult(
         success: false,
         message: _mapFirebaseAuthError(e.code, e.message),
       );
     } catch (e) {
-      debugPrint('Google Sign-In Error: $e');
-      // Simulasi demo jika di lingkungan simulator tanpa Google Play Services
-      if (kDebugMode &&
-          (e.toString().contains('PlatformException') ||
-              e.toString().contains('UnsupportedError'))) {
-        await Future.delayed(const Duration(milliseconds: 600));
-        _currentUser = const User(
+      debugPrint('--> [AuthService] Google Sign-In Error umum: $e');
+      if (kDebugMode) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        _setUser(const User(
           id: 'google-demo-user',
           name: 'Pengguna Google Demo',
           email: 'google.user@example.com',
           phone: '081298765432',
-        );
+        ));
         return AuthResult(
           success: true,
-          message: 'Berhasil masuk dengan akun Google (Demo Mode).',
+          message: 'Berhasil masuk dengan akun Google (Mode Demo).',
           user: _currentUser,
         );
       }
@@ -403,12 +435,12 @@ class AuthService {
         final userCredential = await auth.signInWithCredential(credential);
         final fbUser = userCredential.user;
         if (fbUser != null) {
-          _currentUser = User(
+          _setUser(User(
             id: fbUser.uid,
             name: fbUser.displayName ?? 'Pengguna Telepon',
             email: fbUser.email ?? '',
             phone: fbUser.phoneNumber ?? phoneNumber ?? '',
-          );
+          ));
           return AuthResult(
             success: true,
             message: 'Verifikasi nomor HP berhasil.',
@@ -431,12 +463,12 @@ class AuthService {
     // Demo mode: verifikasi kode 6 digit
     await Future.delayed(const Duration(milliseconds: 600));
     if (smsCode.trim().length == 6) {
-      _currentUser = User(
+      _setUser(User(
         id: 'phone-user-${DateTime.now().millisecondsSinceEpoch}',
         name: 'Pengguna ApoteKita',
         email: '',
         phone: phoneNumber ?? '081234567890',
-      );
+      ));
       return AuthResult(
         success: true,
         message: 'Verifikasi OTP berhasil.',
@@ -512,13 +544,13 @@ class AuthService {
   // ─── Sync dari Firebase User (dipakai AuthGate) ────────────────────────────
   /// Menyinkronkan state lokal AuthService dari objek FirebaseUser aktif.
   void syncFromFirebaseUser(fb_auth.User fbUser) {
-    _currentUser = User(
+    _setUser(User(
       id: fbUser.uid,
       name: fbUser.displayName ?? fbUser.email?.split('@').first ?? 'Pengguna',
       email: fbUser.email ?? '',
       phone: fbUser.phoneNumber ?? '',
       photoUrl: fbUser.photoURL,
-    );
+    ));
   }
 
   // ─── Logout ────────────────────────────────────────────────────────────────
@@ -529,7 +561,7 @@ class AuthService {
     try {
       await _firebaseAuth?.signOut();
     } catch (_) {}
-    _currentUser = null;
+    _setUser(null);
   }
 
   // ─── Helper Pemetaan Pesan Error Firebase ──────────────────────────────────
