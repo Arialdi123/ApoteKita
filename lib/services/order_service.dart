@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import '../models/order.dart';
 import '../models/cart_item.dart';
 import '../data/order_data.dart';
 
-/// Service pengelola Pesanan dan Transaksi (in-memory state dengan ChangeNotifier)
+/// Service pengelola Pesanan dan Transaksi.
+/// Terhubung langsung dengan Cloud Firestore (koleksi 'orders') dengan fallback in-memory state.
 class OrderService extends ChangeNotifier {
   static final OrderService _instance = OrderService._internal();
   factory OrderService() => _instance;
@@ -11,11 +13,54 @@ class OrderService extends ChangeNotifier {
   final List<Order> _orders = [];
   int _orderCounter = 4;
 
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  CollectionReference<Map<String, dynamic>> get _ordersRef =>
+      _firestore.collection('orders');
+
   OrderService._internal() {
+    // Mulai dengan data awal sebagai fallback
     _orders.addAll(initialDummyOrders);
+    // Sinkronkan data dari Firestore di latar belakang
+    initFirestoreSync();
   }
 
-  /// Daftar semua pesanan
+  /// Sinkronkan pesanan dari Cloud Firestore
+  Future<void> initFirestoreSync({String? userId}) async {
+    try {
+      Query<Map<String, dynamic>> query = _ordersRef;
+      if (userId != null && userId.isNotEmpty) {
+        query = query.where('userId', isEqualTo: userId);
+      }
+
+      final snapshot = await query.get();
+      if (snapshot.docs.isNotEmpty) {
+        final firestoreOrders = snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return Order.fromMap(data);
+        }).toList();
+
+        // Gabungkan dan hindari duplikasi ID
+        for (final remoteOrder in firestoreOrders) {
+          final existingIndex =
+              _orders.indexWhere((o) => o.id == remoteOrder.id);
+          if (existingIndex != -1) {
+            _orders[existingIndex] = remoteOrder;
+          } else {
+            _orders.add(remoteOrder);
+          }
+        }
+
+        // Urutkan pesanan dari yang paling baru
+        _orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Firestore initFirestoreSync notice: $e');
+    }
+  }
+
+  /// Daftar semua pesanan (unmodifiable list view)
   List<Order> get orders => List.unmodifiable(_orders);
 
   /// Dapatkan daftar pesanan dengan filter status opsional
@@ -36,7 +81,7 @@ class OrderService extends ChangeNotifier {
     }
   }
 
-  /// Buat pesanan baru
+  /// Buat pesanan baru dan simpan ke Cloud Firestore
   Order createOrder({
     required String userId,
     required List<CartItem> items,
@@ -45,18 +90,16 @@ class OrderService extends ChangeNotifier {
     String? deliveryAddress,
   }) {
     final now = DateTime.now();
-    final dateStr = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
     final id = 'ORD-$dateStr-${_orderCounter.toString().padLeft(3, '0')}';
     _orderCounter++;
 
-    final subtotal = items.fold(0, (sum, item) => sum + item.subtotal);
+    final subtotal = items.fold(0, (totalSum, item) => totalSum + item.subtotal);
     final shippingCost = pickupMethod.shippingCost;
     final total = subtotal + shippingCost;
 
-    // Default payment status
-    final PaymentStatus initialPaymentStatus = (paymentMethod == PaymentMethod.payAtPharmacy)
-        ? PaymentStatus.pending
-        : PaymentStatus.pending;
+    final PaymentStatus initialPaymentStatus = PaymentStatus.pending;
 
     final newOrder = Order(
       id: id,
@@ -78,7 +121,21 @@ class OrderService extends ChangeNotifier {
     // Insert di awal list agar pesanan terbaru ada di paling atas
     _orders.insert(0, newOrder);
     notifyListeners();
+
+    // Simpan ke Cloud Firestore di latar belakang
+    _saveOrderToFirestore(newOrder);
+
     return newOrder;
+  }
+
+  /// Menyimpan pesanan ke Cloud Firestore
+  Future<void> _saveOrderToFirestore(Order order) async {
+    try {
+      await _ordersRef.doc(order.id).set(order.toMap(), SetOptions(merge: true));
+      debugPrint('✅ Pesanan ${order.id} berhasil disimpan ke Cloud Firestore!');
+    } catch (e) {
+      debugPrint('⚠️ Gagal menyimpan pesanan ke Cloud Firestore: $e');
+    }
   }
 
   /// Update status pembayaran
@@ -95,6 +152,13 @@ class OrderService extends ChangeNotifier {
     }
 
     notifyListeners();
+
+    // Perbarui ke Firestore
+    _updateFirestore(orderId, {
+      'paymentStatus': order.paymentStatus.name,
+      'orderStatus': order.orderStatus.name,
+    });
+
     return true;
   }
 
@@ -105,6 +169,12 @@ class OrderService extends ChangeNotifier {
 
     _orders[index].orderStatus = status;
     notifyListeners();
+
+    // Perbarui ke Firestore
+    _updateFirestore(orderId, {
+      'orderStatus': status.name,
+    });
+
     return true;
   }
 
@@ -113,13 +183,20 @@ class OrderService extends ChangeNotifier {
     final index = _orders.indexWhere((o) => o.id == orderId);
     if (index == -1) return false;
 
-    _orders[index].orderStatus = OrderStatus.completed;
-    // Jika bayar di apotek, saat selesai tandai juga sebagai lunas
-    if (_orders[index].paymentMethod == PaymentMethod.payAtPharmacy) {
-      _orders[index].paymentStatus = PaymentStatus.paid;
+    final order = _orders[index];
+    order.orderStatus = OrderStatus.completed;
+    if (order.paymentMethod == PaymentMethod.payAtPharmacy) {
+      order.paymentStatus = PaymentStatus.paid;
     }
 
     notifyListeners();
+
+    // Perbarui ke Firestore
+    _updateFirestore(orderId, {
+      'orderStatus': order.orderStatus.name,
+      'paymentStatus': order.paymentStatus.name,
+    });
+
     return true;
   }
 
@@ -135,24 +212,48 @@ class OrderService extends ChangeNotifier {
 
     order.orderStatus = OrderStatus.cancelled;
     notifyListeners();
+
+    // Perbarui ke Firestore
+    _updateFirestore(orderId, {
+      'orderStatus': OrderStatus.cancelled.name,
+    });
+
     return true;
   }
 
   /// Laporkan masalah pesanan
-  bool reportProblem(String orderId, {
+  bool reportProblem(
+    String orderId, {
     required String category,
     required String description,
   }) {
     final index = _orders.indexWhere((o) => o.id == orderId);
     if (index == -1) return false;
 
-    _orders[index].problemReport = OrderProblemReport(
+    final report = OrderProblemReport(
       category: category,
       description: description,
       reportedAt: DateTime.now(),
     );
 
+    _orders[index].problemReport = report;
     notifyListeners();
+
+    // Perbarui ke Firestore
+    _updateFirestore(orderId, {
+      'problemReport': report.toMap(),
+    });
+
     return true;
+  }
+
+  /// Helper untuk mengupdate dokumen di Cloud Firestore
+  Future<void> _updateFirestore(String orderId, Map<String, dynamic> data) async {
+    try {
+      await _ordersRef.doc(orderId).update(data);
+      debugPrint('✅ Dokumen $orderId berhasil diupdate di Firestore!');
+    } catch (e) {
+      debugPrint('⚠️ Gagal update Firestore untuk $orderId: $e');
+    }
   }
 }
