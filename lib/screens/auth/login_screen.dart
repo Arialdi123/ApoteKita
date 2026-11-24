@@ -298,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 child: Text(
                                   'Daftar Sekarang',
                                   style: TextStyle(
-                                    color: AppColors.cyan,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
                                   ),
@@ -323,15 +323,16 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildFormCard() {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -351,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen>
               onFieldSubmitted: (_) =>
                   FocusScope.of(context).requestFocus(_passwordFocus),
               prefixIcon:
-                  const Icon(Icons.email_outlined, color: AppColors.cyan),
+                  const Icon(Icons.email_outlined, color: AppColors.primary),
               validator: _validateEmail,
             ),
           ),
@@ -370,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen>
               focusNode: _passwordFocus,
               onFieldSubmitted: (_) => _handleEmailLogin(),
               prefixIcon:
-                  const Icon(Icons.lock_outline, color: AppColors.cyan),
+                  const Icon(Icons.lock_outline, color: AppColors.primary),
               validator: _validatePassword,
               suffixIcon: IconButton(
                 icon: Icon(
@@ -386,7 +387,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           // Lupa Password
           Align(
@@ -400,7 +401,7 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Text(
                   'Lupa Password?',
                   style: TextStyle(
-                    color: AppColors.cyan,
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -409,13 +410,30 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
-          // Tombol Login Email
-          GradientButton(
-            label: 'Masuk',
-            isLoading: false,
-            onPressed: _handleEmailLogin,
+          // Tombol Login Email Solid
+          SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _handleEmailLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text(
+                'Masuk',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
           ),
         ],
       ),
