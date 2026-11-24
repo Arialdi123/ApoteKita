@@ -27,6 +27,7 @@ import 'screens/user/order_success_screen.dart';
 import 'screens/user/orders_screen.dart';
 import 'screens/user/order_detail_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'services/medicine_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,8 @@ void main() async {
 
   try {
     await Firebase.initializeApp();
+    // Otomatis isi koleksi medicines di Firestore jika masih kosong
+    MedicineService().seedIfEmpty();
   } catch (e) {
     debugPrint('Firebase init notice: $e');
   }
