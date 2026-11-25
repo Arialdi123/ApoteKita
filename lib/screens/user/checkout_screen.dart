@@ -5,6 +5,7 @@ import '../../models/order.dart';
 import '../../services/cart_service.dart';
 import '../../services/order_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/medicine_service.dart';
 import '../../widgets/order_widgets.dart';
 
 /// Halaman Checkout Pesanan
@@ -195,7 +196,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           : null,
     );
 
-    // Kosongkan keranjang belanja
+    // Kurangi stok obat sesuai item pesanan & kosongkan keranjang belanja
+    MedicineService().reduceStockForOrder(cart.items);
     cart.clearCart();
 
     // Pindah ke halaman Order Success
@@ -527,8 +529,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   backgroundColor: AppColors.green,
                   foregroundColor: Colors.white,
                   elevation: 0,
+                  minimumSize: const Size(0, 48),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 14),
+                      horizontal: 20, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -538,6 +541,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('Konfirmasi Pesanan'),
                     SizedBox(width: 6),

@@ -1,82 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/user/home_screen.dart';
+import '../screens/apoteker/apoteker_dashboard_screen.dart';
+import '../screens/pegawai/pegawai_dashboard_screen.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
 import 'splash_screen_wrapper.dart';
 
-/// AuthGate memantau status autentikasi Firebase secara real-time
-/// menggunakan [StreamBuilder] + [authStateChanges()].
-///
-/// Alur:
-///   - Waiting    → SplashScreenWrapper (loading awal)
-///   - Firebase user logged in   → HomeScreen
-///   - Firebase user null  → cek AuthService lokal → HomeScreen / LoginScreen
+/// AuthGate memantau status autentikasi & mengarahkan pengguna
+/// ke dashboard yang sesuai dengan role-nya (Pengguna, Apoteker, Pegawai, Admin).
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  static Widget widgetForRole(UserRole role) {
+    switch (role) {
+      case UserRole.admin:
+        return const AdminDashboardScreen();
+      case UserRole.apoteker:
+        return const ApotekerDashboardScreen();
+      case UserRole.pegawai:
+        return const PegawaiDashboardScreen();
+      case UserRole.user:
+        return const HomeScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Cek apakah Firebase tersedia di environment
+    final authService = AuthService();
     final bool firebaseAvailable = _isFirebaseAvailable();
 
-    if (firebaseAvailable) {
-      return StreamBuilder<fb_auth.User?>(
-        stream: fb_auth.FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          // Saat snapshot masih loading
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SplashScreenWrapper();
-          }
+    return ListenableBuilder(
+      listenable: authService,
+      builder: (context, _) {
+        // Jika sesi sudah aktif di AuthService (akun 4 role / Firebase tersinkron)
+        if (authService.isLoggedIn && authService.currentUser != null) {
+          return widgetForRole(authService.currentUser!.role);
+        }
 
-          // Firebase user masih login
-          if (snapshot.hasData && snapshot.data != null) {
-            // Sinkronkan ke AuthService lokal jika belum ada
-            final authService = AuthService();
-            if (!authService.isLoggedIn) {
-              final fbUser = snapshot.data!;
-              authService.syncFromFirebaseUser(fbUser);
-            }
-            return const HomeScreen();
-          }
+        if (firebaseAvailable) {
+          return StreamBuilder<fb_auth.User?>(
+            stream: fb_auth.FirebaseAuth.instance.authStateChanges(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SplashScreenWrapper();
+              }
 
-          // Cek fallback: user lokal (login via email dummy / demo mode)
-          final authService = AuthService();
-          if (authService.isLoggedIn) {
-            return const HomeScreen();
-          }
+              if (snapshot.hasData && snapshot.data != null) {
+                if (!authService.isLoggedIn) {
+                  authService.syncFromFirebaseUser(snapshot.data!);
+                }
+                final role = authService.currentUser?.role ?? UserRole.user;
+                return widgetForRole(role);
+              }
 
-          return const LoginScreen();
-        },
-      );
-    }
+              if (authService.isLoggedIn && authService.currentUser != null) {
+                return widgetForRole(authService.currentUser!.role);
+              }
 
-    // Fallback: jika Firebase belum dikonfigurasi, gunakan state lokal
-    return _LocalAuthGate();
+              return const LoginScreen();
+            },
+          );
+        }
+
+        return const LoginScreen();
+      },
+    );
   }
 
   bool _isFirebaseAvailable() {
     try {
-      return fb_auth.FirebaseAuth.instance != null;
+      fb_auth.FirebaseAuth.instance;
+      return true;
     } catch (_) {
       return false;
     }
   }
 }
-
-/// LocalAuthGate: reactive terhadap AuthService state lokal
-/// Digunakan saat Firebase belum dikonfigurasi (tanpa google-services.json).
-class _LocalAuthGate extends StatefulWidget {
-  @override
-  State<_LocalAuthGate> createState() => _LocalAuthGateState();
-}
-
-class _LocalAuthGateState extends State<_LocalAuthGate> {
-  final _authService = AuthService();
-
-  @override
-  Widget build(BuildContext context) {
-    return _authService.isLoggedIn ? const HomeScreen() : const LoginScreen();
-  }
-}
-

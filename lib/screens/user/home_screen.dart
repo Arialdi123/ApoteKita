@@ -9,6 +9,7 @@ import '../../widgets/catalog_widgets.dart';
 import '../../widgets/order_widgets.dart';
 import 'catalog_screen.dart';
 import 'orders_screen.dart';
+import 'consultation_tab.dart';
 
 // ─── Home User Screen (dengan Bottom Navigation) ──────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -27,11 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const _BerandaTab(),
     const CatalogScreen(),
     const OrdersScreen(isTab: true),
-    const _PlaceholderTab(
-      icon: Icons.support_agent_outlined,
-      title: 'Konsultasi',
-      subtitle: 'Fitur konsultasi apoteker sedang dalam pengembangan.',
-    ),
+    const UserConsultationTab(),
     const _ProfilTab(),
   ];
 
@@ -131,6 +128,13 @@ class _BerandaTabState extends State<_BerandaTab> {
   void initState() {
     super.initState();
     _loadPopular();
+    MedicineService().addListener(_loadPopular);
+  }
+
+  @override
+  void dispose() {
+    MedicineService().removeListener(_loadPopular);
+    super.dispose();
   }
 
   Future<void> _loadPopular() async {
@@ -248,11 +252,15 @@ class _BerandaTabState extends State<_BerandaTab> {
                         children: [
                           Icon(Icons.search_rounded, color: AppColors.cyan, size: 20),
                           SizedBox(width: 10),
-                          Text(
-                            'Cari obat, suplemen, atau produk kesehatan...',
-                            style: TextStyle(
-                              color: AppColors.textHint,
-                              fontSize: 13,
+                          Expanded(
+                            child: Text(
+                              'Cari obat, suplemen, atau produk kesehatan...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColors.textHint,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -638,16 +646,22 @@ class _ProfilTab extends StatelessWidget {
       child: Column(
         children: [
           _buildMenuItem(
+            icon: Icons.warning_amber_rounded,
+            label: 'Riwayat Alergi Obat',
+            onTap: () => _showAllergiesDialog(context),
+          ),
+          const Divider(height: 1, color: AppColors.border, indent: 56),
+          _buildMenuItem(
+            icon: Icons.help_outline_rounded,
+            label: 'Pusat Bantuan (FAQ)',
+            onTap: () => _showFaqSheet(context),
+          ),
+          const Divider(height: 1, color: AppColors.border, indent: 56),
+          _buildMenuItem(
             icon: Icons.lock_outline,
             label: 'Ubah Password',
             onTap: () =>
                 Navigator.of(context).pushNamed(AppRoutes.changePassword),
-          ),
-          const Divider(height: 1, color: AppColors.border, indent: 56),
-          _buildMenuItem(
-            icon: Icons.info_outline,
-            label: 'Tentang ApoteKita',
-            onTap: () {},
           ),
           const Divider(height: 1, color: AppColors.border, indent: 56),
           _buildMenuItem(
@@ -657,6 +671,107 @@ class _ProfilTab extends StatelessWidget {
             onTap: () => _showLogoutDialog(context),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showAllergiesDialog(BuildContext context) {
+    final authService = AuthService();
+    final ctrl = TextEditingController(
+      text: (authService.currentUser?.allergies ?? []).join(', '),
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Riwayat Alergi Obat'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(
+            labelText: 'Pisahkan dengan koma',
+            hintText: 'Contoh: Penisilin, Ibuprofen',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final items = ctrl.text
+                  .split(',')
+                  .map((s) => s.trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList();
+              await authService.updateCurrentUserAllergies(items);
+              if (!ctx.mounted) return;
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFaqSheet(BuildContext context) {
+    const faqs = [
+      (
+        'Bagaimana cara menebus obat dengan resep dokter?',
+        'Buka tab Konsultasi → pilih Validasi Resep → Unggah Resep. Setelah disetujui Apoteker, klik "Pesan Obat Resep Sekarang".'
+      ),
+      (
+        'Bagaimana cara melacak status pesanan saya?',
+        'Buka tab Pesanan. Setiap perubahan dari Pegawai/Apoteker (Diproses, Siap Diambil, Dikirim, Selesai) akan diperbarui secara langsung.'
+      ),
+      (
+        'Apakah saya bisa berkonsultasi gratis dengan Apoteker?',
+        'Ya! Buka tab Konsultasi → Tanya Apoteker untuk memulai chat langsung dengan tenaga kefarmasian ApoteKita.'
+      ),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Text(
+              'Pusat Bantuan (FAQ)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            ...faqs.map(
+              (f) => ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text(
+                  f.$1,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      f.$2,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -730,83 +845,6 @@ class _ProfilTab extends StatelessWidget {
             child: const Text('Ya, Keluar'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Tab Placeholder ──────────────────────────────────────────────────────────
-class _PlaceholderTab extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _PlaceholderTab({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.green.withValues(alpha: 0.1),
-                      AppColors.cyan.withValues(alpha: 0.1),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 60, color: AppColors.cyan),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                '🔧 Fitur sedang dalam pengembangan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textHint,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
