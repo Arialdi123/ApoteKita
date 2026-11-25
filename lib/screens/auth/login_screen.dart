@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../app/routes.dart';
+import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_widgets.dart';
 import '../../widgets/auth_widgets.dart';
@@ -110,12 +111,14 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = false);
 
     if (result.success) {
-      AppFeedback.showSuccess(context, 'Selamat datang kembali di ApoteKita!');
-      // AuthGate memantau Firebase authStateChanges – jika login via Firebase,
-      // navigasi otomatis terjadi. Untuk fallback lokal, push manual.
+      final role = result.user?.role ?? UserRole.user;
+      AppFeedback.showSuccess(
+        context,
+        'Selamat datang, ${result.user?.name ?? role.label} (${role.label})!',
+      );
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
+          AppRoutes.dashboardForRole(role),
           (route) => false,
         );
       }
@@ -125,6 +128,14 @@ class _LoginScreenState extends State<LoginScreen>
         result.message ?? 'Terjadi kesalahan saat masuk.',
       );
     }
+  }
+
+  void _fillDemoRole(String email) {
+    setState(() {
+      _emailController.text = email;
+      _passwordController.text = '123456';
+    });
+    _handleEmailLogin();
   }
 
   // ─── Login dengan Google ──────────────────────────────────────────────────
@@ -141,15 +152,14 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = false);
 
     if (result.success) {
+      final role = result.user?.role ?? UserRole.user;
       AppFeedback.showSuccess(
         context,
         'Berhasil masuk sebagai ${result.user?.name ?? "Pengguna"}',
       );
-      // Firebase authStateChanges akan memicu AuthGate secara otomatis.
-      // Untuk keamanan (dan fallback demo mode), navigasi juga secara eksplisit.
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
+          AppRoutes.dashboardForRole(role),
           (route) => false,
         );
       }
@@ -172,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen>
           'Selamat datang! Masuk berhasil dengan nomor HP.',
         );
         Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRoutes.home,
+          AppRoutes.dashboardForRole(user.role),
           (route) => false,
         );
       },
@@ -251,7 +261,12 @@ class _LoginScreenState extends State<LoginScreen>
                         // ── Card Form Utama ─────────────────────────────────
                         _buildFormCard(),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+
+                        // ── Akses Cepat 4 Role ──────────────────────────────
+                        _buildQuickRoleSelector(),
+
+                        const SizedBox(height: 20),
 
                         // ── Garis Pemisah (Divider) ─────────────────────────
                         _buildDivider(),
@@ -414,6 +429,58 @@ class _LoginScreenState extends State<LoginScreen>
             label: 'Masuk',
             isLoading: false,
             onPressed: _handleEmailLogin,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickRoleSelector() {
+    final roles = [
+      ('Pengguna', 'user@apotekkita.com', AppColors.green),
+      ('Apoteker', 'apoteker@apotekkita.com', AppColors.cyan),
+      ('Pegawai', 'pegawai@apotekkita.com', const Color(0xFF7B61FF)),
+      ('Admin', 'admin@apotekkita.com', const Color(0xFF1A1A2E)),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Masuk Cepat Sesuai Role (Password: 123456)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: roles.map((r) {
+              return ActionChip(
+                backgroundColor: r.$3.withValues(alpha: 0.1),
+                side: BorderSide(color: r.$3.withValues(alpha: 0.3)),
+                label: Text(
+                  r.$1,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: r.$3,
+                  ),
+                ),
+                onPressed: () => _fillDemoRole(r.$2),
+              );
+            }).toList(),
           ),
         ],
       ),

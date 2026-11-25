@@ -43,14 +43,24 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
 
     _searchController.addListener(_onSearchChanged);
+    _medicineService.addListener(_onRemoteMedicineUpdated);
   }
 
   @override
   void dispose() {
+    _medicineService.removeListener(_onRemoteMedicineUpdated);
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _onRemoteMedicineUpdated() {
+    if (!mounted) return;
+    setState(() {
+      _allMedicines = List<Medicine>.from(_medicineService.medicinesList);
+    });
+    _applyFilter();
   }
 
   Future<void> _loadMedicines() async {

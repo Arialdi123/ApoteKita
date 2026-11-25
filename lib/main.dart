@@ -10,8 +10,11 @@ import 'screens/auth/register_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/change_password_screen.dart';
 
-// Phase 1 — Home
+// Phase 1 — Home & Multi-Role Dashboards
 import 'screens/user/home_screen.dart';
+import 'screens/apoteker/apoteker_dashboard_screen.dart';
+import 'screens/pegawai/pegawai_dashboard_screen.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
 
 // Phase 2 — Katalog & Informasi Obat
 import 'screens/user/catalog_screen.dart';
@@ -73,6 +76,9 @@ class ApoteKitaApp extends StatelessWidget {
         AppRoutes.forgotPassword: (_) => const ForgotPasswordScreen(),
         AppRoutes.changePassword: (_) => const ChangePasswordScreen(),
         AppRoutes.home: (_) => const HomeScreen(),
+        AppRoutes.apotekerDashboard: (_) => const ApotekerDashboardScreen(),
+        AppRoutes.pegawaiDashboard: (_) => const PegawaiDashboardScreen(),
+        AppRoutes.adminDashboard: (_) => const AdminDashboardScreen(),
 
         // Phase 2 — tanpa arguments
         AppRoutes.drugInteraction: (_) => const DrugInteractionScreen(),

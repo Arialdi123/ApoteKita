@@ -9,10 +9,18 @@
       "client_info": {
         "mobilesdk_app_id": "1:419520945853:android:5e6021ee7cf84c87d461d4",
         "android_client_info": {
-          "package_name": "com.example.apotek_kita"
+          "package_name": "com.android.application"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "419520945853-0te5snn8lel2rtbr85pdl0t12ngb2rpf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.android.application",
+            "certificate_hash": "823ed3c9dff6a7f821b378e6e9fada895d2c0490"
+          }
+        },
         {
           "client_id": "419520945853-7h181sj6m6mk9j8a5om939umoleh0843.apps.googleusercontent.com",
           "client_type": 3

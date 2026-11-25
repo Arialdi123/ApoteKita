@@ -247,6 +247,27 @@ class OrderService extends ChangeNotifier {
     return true;
   }
 
+  /// Tandai laporan masalah pesanan selesai ditangani oleh Pegawai/Apoteker/Admin
+  bool resolveProblemReport(String orderId, {String status = 'Selesai Ditangani'}) {
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index == -1 || _orders[index].problemReport == null) return false;
+
+    final old = _orders[index].problemReport!;
+    final updatedReport = OrderProblemReport(
+      category: old.category,
+      description: old.description,
+      reportedAt: old.reportedAt,
+      status: status,
+    );
+    _orders[index].problemReport = updatedReport;
+    notifyListeners();
+
+    _updateFirestore(orderId, {
+      'problemReport': updatedReport.toMap(),
+    });
+    return true;
+  }
+
   /// Helper untuk mengupdate dokumen di Cloud Firestore
   Future<void> _updateFirestore(String orderId, Map<String, dynamic> data) async {
     try {

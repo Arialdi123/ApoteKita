@@ -1,3 +1,5 @@
+import '../models/user.dart';
+
 /// Konstanta nama rute untuk navigasi terpusat.
 /// Tambahkan rute baru di sini saat fitur baru dibuat.
 class AppRoutes {
@@ -12,6 +14,11 @@ class AppRoutes {
   static const String home = '/home';
   static const String profile = '/profile';
 
+  // ─── Multi-Role Dashboards ────────────────────────────────────────────────
+  static const String apotekerDashboard = '/apoteker-dashboard';
+  static const String pegawaiDashboard = '/pegawai-dashboard';
+  static const String adminDashboard = '/admin-dashboard';
+
   // ─── Phase 2: Katalog & Informasi Obat ────────────────────────────────────
   static const String catalog = '/catalog';
   static const String medicineDetail = '/medicine-detail';
@@ -25,4 +32,18 @@ class AppRoutes {
   static const String orderSuccess = '/order-success';
   static const String orders = '/orders';
   static const String orderDetail = '/order-detail';
+
+  /// Tentukan rute beranda sesuai role pengguna.
+  static String dashboardForRole(UserRole role) {
+    switch (role) {
+      case UserRole.admin:
+        return adminDashboard;
+      case UserRole.apoteker:
+        return apotekerDashboard;
+      case UserRole.pegawai:
+        return pegawaiDashboard;
+      case UserRole.user:
+        return home;
+    }
+  }
 }
